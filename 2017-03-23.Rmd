@@ -1,0 +1,223 @@
+---
+title: "STA221"
+author: "Neil Montgomery"
+date: "Last edited: `r format(Sys.time(), '%Y-%m-%d %H:%M')`"
+output: 
+  beamer_presentation:
+    keep_tex: TRUE
+    incremental: TRUE
+#    df_print: tibble
+    fig_caption: FALSE
+classoption: aspectratio=169
+header-includes:
+- \newcommand{\ve}{\varepsilon}
+- \newcommand{\dbar}[1]{\overline{\overline{#1}}}
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE,
+                      dev='pdf', fig.width=5, fig.asp=0.618, fig.align='center')
+options(tibble.width=70, tibble.print_min=5, show.signif.stars = FALSE)
+library(tidyverse)
+```
+
+
+# multiple regression
+
+## regression with more than one input variable
+
+The Universal Statistical Model:
+\begin{center}
+Output = Input + Noise
+\end{center}
+
+\pause Most datasets have more than one or two columns.
+
+\pause The most important stastical model (in my opinion) is the linear regression model with more than one "$x$" variable. For example, with 3 input variables:
+
+$$y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_3 x_3 + \ve$$
+
+## interpretation of the variables
+
+We treat $y$ as random. The inputs are not random. They can be whatever you like, even functions of one another, with one technical limitation*.
+
+\pause So, for example, the following is a valid multiple regression model:
+
+$$y = \beta_0 + \beta_1 x + \beta_2 x^2 + \ve$$
+
+This kind of "polynomial" model is good for fitting some types of non-linear relationships between $y$ and a single $x$.
+
+\pause *A variable cannot be a linear function of other variables in the model.
+
+## what is being accomplished in multiple regression?
+
+```{r}
+data(trees)
+trees <- as_tibble(trees)
+```
+
+`R` comes with some sample datasets. One is called `trees` and has variables `r names(trees)[1]`, `r names(trees)[2]`, and `r names(trees)[3]`. Here's a peek at the data:
+
+```{r}
+trees
+```
+
+
+## what is being accomplished in multiple regression?
+
+
+```{r, fig.align='center', warning=FALSE}
+library(scatterplot3d)
+s3d <- scatterplot3d(trees, type="h", highlight.3d=FALSE,
+angle=55, scale.y=0.7, pch=16, main="Volume versus height and girth")
+```
+
+## multiple regression fits a surface to the points
+
+```{r, fig.align='center', fig.height=6, warning=FALSE}
+s3d <- scatterplot3d(trees, type="h", highlight.3d=FALSE,
+angle=55, scale.y=0.7, pch=16, main="Volume versus height and girth")
+my.lm <- lm(Volume ~ Girth + Height, data=trees)
+s3d$plane3d(my.lm)
+```
+
+## the fundamental issues
+
+* Familiar issues with similar answers
+    + Parameter testing and estimation
+    + Mean response and prediction
+    + Model assumptions
+* New issues:
+    + Parameter interpretation
+    + Hard to visualize what is really happening
+    + Actual formulae too unwieldly to even present
+    + Model selection: which variables?
+    + "Multicollinearity" (highly correlated inputs)
+    
+
+## parameter interpretation
+
+The multiple regression model:
+$$y = \beta_0 + \beta_1 x_1 + \ldots \beta_k x_k + \ve, \quad \ve \sim N(0,\sigma)$$
+has many parameters.
+
+\pause $\sigma$ is the variation in the distribution of the noise. It is not a function of any of the $x$ - just like before it is a constant.
+
+\pause $\beta_0$ is the "intercept"---mainly important to make sure the fitted surface actually goes through the points.
+
+\pause The $\beta_i$ from $i\in\{1,\ldots,k\}$ are the slope parameters, and have a different interpretation than before.
+
+## slope parameter interpretation
+
+$\beta_i$ is:
+
+* the change in $y$
+
+* when $x_i$ increases by 1 unit
+
+* \textbf{\textit{given [values of] all the other input variables in the model.}}
+
+\pause That bold, italic statement should echo in your mind any time you think of anything to do with $\beta_i$.
+
+
+## trees example
+
+We might want to model $y=$`Volume` (the amount of wood) as a linear model of the input variables $x_1=$`Girth` and $x_2=$`Height`, as follows:
+$$y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \ve$$
+
+
+\pause The computer does all the estimation of the parameters. 
+
+\pause We'll call the fitted model:
+$$y = b_0 + b_1 x_1 + b_2 x_2$$
+
+\pause The computer uses the method of "least squares", like before. A full treatment of the analysis requires matrix algebra.
+
+## fitted values | residuals
+
+Here's the first row of the `trees` data:
+
+```{r}
+library(knitr)
+kable(trees[1,])
+```
+
+We could call these values $y_1, x_{11},$ and $x_{21}$
+
+\pause The fitted value for $y_1$ is just:
+$$\hat{y}_1 = b_0 + b_1 x_{11} + b_2 x_{21}$$
+
+\pause The residual corresponding to this fitted value is just:
+$$y_1 - \hat{y}_1$$
+
+\pause For a dataset with $n$ rows (the sample size), there is a fitted value and residual for each row.
+
+## trees data fitted model
+
+Here's what `R` produces:
+
+```{r}
+library(xtable)
+source("multiplot.R")
+trees_fit <- trees %>% 
+  lm(Volume ~ Girth + Height, data = .)
+short_print_lm(summary(trees_fit))
+```
+
+## individual slope parameter hypothesis testing
+
+The usual hypothesis test for a single parameter:
+\begin{align*}
+H_0: \beta_i &= 0\\
+H_a: \beta_i &\ne 0
+\end{align*}
+
+\pause If $H_0$ is true, it means the $i$th variable ($x_i$) is 
+not significantly related to $y$
+
+\pause \textit{\textbf{given all the other $x$'s in the model}}
+
+## the overall hypothesis test
+
+"Is there any linear relationship between $y$ and the input variables?"
+
+\pause Null hypothesis can be expressed as:
+$$H_0: \beta_1 = \beta_2 = \cdots = \beta_k = 0$$
+
+\pause It is also possible to test any subset of these parameters, such as:
+$$H_0: \beta_1 = \beta_2 = 0$$
+although at the moment it's not clear why this might be a good idea.
+
+## estimating $\sigma$
+
+This works the same as with simple regression, in which we used $\sqrt{MSE}$ where:
+$$MSE = \frac{\sum\limits_{j=1}^n \left(y_j - \hat{y}_j\right)^2}{n - 2}$$
+
+\pause $n-2$ was the sample size minus the number of parameters (two: $\beta_0$ and $\beta_1$) being estimated. 
+
+\pause There was only one input variable, so another way to think of this was "sample size minus the number of input variables, then minus 1."
+
+## estimating $\sigma$
+
+In multiple regression, nothing changes. Use $\sqrt{MSE}$, where:
+$$MSE = \frac{\sum\limits_{j=1}^n \left(y_j - \hat{y}_j\right)^2}{n - (k+1)}$$
+
+## hypothesis testing for $\beta_i$
+
+The computer produces the estimate $b_i$, which has these properties:
+\begin{align*}
+E(b_i) &= \beta_i\\
+\text{Var}(b_i) &= \sigma\cdot c_i
+\end{align*}
+
+\pause $c_i$ is a number that reflects the relationships between $x_i$ and the other inputs (to be revisited).
+
+\pause Just like before, we get:
+$$\frac{b_i - \beta_i}{\sqrt{MSE}\sqrt{c_i}} \sim t_{n-{k+1}}$$
+
+## hypothesis testing for $\beta_i$ in the trees example
+
+```{r}
+short_print_lm(summary(trees_fit))
+```
+
